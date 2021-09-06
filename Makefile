@@ -1,13 +1,20 @@
 
 default:
 	@set -e;\
+	NETCDF_C_PREFIX=$$(nc-config --prefix);\
+	NETCDF_F_PREFIX=$$(nf-config --prefix);\
+	opts+=("-DNetCDF_Fortran_LIBRARY=$${NETCDF_F_PREFIX}/lib/libnetcdff.so");\
+	opts+=("-DNetCDF_C_LIBRARY=$${NETCDF_C_PREFIX}/lib/libnetcdf.so");\
+	opts+=("-DNetCDF_INCLUDE_DIR=$${NETCDF_C_PREFIX}/include/");\
 	mkdir build;\
 	cd build;\
-	cmake ../schism_v5.8.0/src \
-	-DNetCDF_Fortran_LIBRARY=$$(nf-config --prefix)/lib/libnetcdff.so \
-	-DNetCDF_INCLUDE_DIRS=$$(nc-config --includedir) \
-	-DNetCDF_C_LIBRARY=$$(nc-config --prefix)/lib/libnetcdf.so;\
-	make -j$$(nproc)
+	if [ $$(expr `gcc -dumpversion | cut -f1 -d.` \>= 10) = 1 ];\
+	then \
+		opts+=' -DCMAKE_Fortran_FLAGS_RELEASE="-O2 -ffree-line-length-none -fallow-argument-mismatch"';\
+	fi;\
+	printf -v opts " %s" "$${opts[@]}";\
+	eval "cmake ../schism_v5.8.0/src $${opts}";\
+	make -j $$(nproc) --no-print-directory
 
 sciclone:
 	@set -e;\
@@ -35,5 +42,5 @@ sciclone:
 	cp sciclone/modulefiles/schism/v5.8.0 $${HOME}/.local/Modules/modulefiles/schism/
 
 
-
-
+clean:
+	@rm -rf build/
